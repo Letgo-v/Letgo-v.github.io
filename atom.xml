@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://yoursite.com/"/>
-  <updated>2018-01-31T16:11:50.440Z</updated>
+  <updated>2018-01-31T16:40:48.573Z</updated>
   <id>http://yoursite.com/</id>
   
   <author>
@@ -20,18 +20,22 @@
     <link href="http://yoursite.com/2017/03/28/Hi/"/>
     <id>http://yoursite.com/2017/03/28/Hi/</id>
     <published>2017-03-28T02:12:15.000Z</published>
-    <updated>2018-01-31T16:11:50.440Z</updated>
+    <updated>2018-01-31T16:40:48.573Z</updated>
     
-    <content type="html"><![CDATA[<p>Hi Welcome</p>
+    <content type="html"><![CDATA[<p>Hi Welcome<br>给文章进行分类,添加标签<br>[直接在源文章中的head部分添加即可]</p>
 ]]></content>
     
     <summary type="html">
     
-      &lt;p&gt;Hi Welcome&lt;/p&gt;
+      &lt;p&gt;Hi Welcome&lt;br&gt;给文章进行分类,添加标签&lt;br&gt;[直接在源文章中的head部分添加即可]&lt;/p&gt;
 
     
     </summary>
     
+      <category term="main" scheme="http://yoursite.com/categories/main/"/>
+    
+    
+      <category term="Test" scheme="http://yoursite.com/tags/Test/"/>
     
   </entry>
   
