@@ -62,9 +62,9 @@
       <category term="main" scheme="http://yoursite.com/categories/main/"/>
     
     
-      <category term="Test2" scheme="http://yoursite.com/tags/Test2/"/>
-    
       <category term="Test" scheme="http://yoursite.com/tags/Test/"/>
+    
+      <category term="Test2" scheme="http://yoursite.com/tags/Test2/"/>
     
   </entry>
   
@@ -88,9 +88,9 @@
       <category term="main2" scheme="http://yoursite.com/categories/main2/"/>
     
     
-      <category term="Test1" scheme="http://yoursite.com/tags/Test1/"/>
-    
       <category term="Test2" scheme="http://yoursite.com/tags/Test2/"/>
+    
+      <category term="Test1" scheme="http://yoursite.com/tags/Test1/"/>
     
       <category term="Test3" scheme="http://yoursite.com/tags/Test3/"/>
     
