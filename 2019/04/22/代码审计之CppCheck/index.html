@@ -1,0 +1,182 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"><meta name="author" content="Let_go"><meta name="renderer" content="webkit"><meta name="copyright" content="Let_go"><meta name="keywords" content="Let_go"><meta name="description" content="null"><meta name="Cache-Control" content="no-cache"><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"><title>代码审计之CppCheck · Mr.Chen's Blog</title><link rel="stylesheet" href="/css/style.css?v=2018.7.9"><link rel="stylesheet" href="/css/animation.css?v=2018.7.9"><link rel="icon" href="/img/assets/favicon.ico"><link rel="stylesheet" href="https://cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css?version=1.5.6"><!-- scripts--><script>(function( w ){
+  "use strict";
+  // rel=preload support test
+  if( !w.loadCSS ){
+    w.loadCSS = function(){};
+  }
+  // define on the loadCSS obj
+  var rp = loadCSS.relpreload = {};
+  // rel=preload feature support test
+  // runs once and returns a function for compat purposes
+  rp.support = (function(){
+    var ret;
+    try {
+      ret = w.document.createElement( "link" ).relList.supports( "preload" );
+    } catch (e) {
+      ret = false;
+    }
+    return function(){
+      return ret;
+    };
+  })();
+
+  // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+  // then change that media back to its intended value on load
+  rp.bindMediaToggle = function( link ){
+    // remember existing media attr for ultimate state, or default to 'all'
+    var finalMedia = link.media || "all";
+
+    function enableStylesheet(){
+      link.media = finalMedia;
+    }
+
+    // bind load handlers to enable media
+    if( link.addEventListener ){
+      link.addEventListener( "load", enableStylesheet );
+    } else if( link.attachEvent ){
+      link.attachEvent( "onload", enableStylesheet );
+    }
+
+    // Set rel and non-applicable media type to start an async request
+    // note: timeout allows this to happen async to let rendering continue in IE
+    setTimeout(function(){
+      link.rel = "stylesheet";
+      link.media = "only x";
+    });
+    // also enable media after 3 seconds,
+    // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+    setTimeout( enableStylesheet, 3000 );
+  };
+
+  // loop through link elements in DOM
+  rp.poly = function(){
+    // double check this to prevent external calls from running
+    if( rp.support() ){
+      return;
+    }
+    var links = w.document.getElementsByTagName( "link" );
+    for( var i = 0; i < links.length; i++ ){
+      var link = links[ i ];
+      // qualify links to those with rel=preload and as=style attrs
+      if( link.rel === "preload" && link.getAttribute( "as" ) === "style" && !link.getAttribute( "data-loadcss" ) ){
+        // prevent rerunning on link
+        link.setAttribute( "data-loadcss", true );
+        // bind listeners to toggle media back
+        rp.bindMediaToggle( link );
+      }
+    }
+  };
+
+  // if unsupported, run the polyfill
+  if( !rp.support() ){
+    // run once at least
+    rp.poly();
+
+    // rerun poly on an interval until onload
+    var run = w.setInterval( rp.poly, 500 );
+    if( w.addEventListener ){
+      w.addEventListener( "load", function(){
+        rp.poly();
+        w.clearInterval( run );
+      } );
+    } else if( w.attachEvent ){
+      w.attachEvent( "onload", function(){
+        rp.poly();
+        w.clearInterval( run );
+      } );
+    }
+  }
+
+
+  // commonjs
+  if( typeof exports !== "undefined" ){
+    exports.loadCSS = loadCSS;
+  }
+  else {
+    w.loadCSS = loadCSS;
+  }
+}( typeof global !== "undefined" ? global : this ) );</script><script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js" defer></script><script src="/js/main.js?v=2018.7.9" defer></script><!-- fancybox--><link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'"><script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" defer></script><!-- busuanzi--><script async src="//dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script></head><body><section class="profile-close" id="cxo-profile"><div class="profile-avatar"><i class="fa fa-caret-left"></i><img src="/img/assets/avatar.jpg"></div><!--.profile-saying
+  i.fa.fa-comment
+  .saying--><div class="cxo-profile-inner"><div class="profile-name">Let_go</div><div class="profile-signature">人生如棋,我愿为卒。行动虽慢,可谁曾见我后退一步。</div><div class="read-progress"></div></div></section><header id="cxo-intro" style="height: 70vh;background-image: url(/img/intro/index-bg.png);"><nav id="cxo-intro-nav"><section><div class="intro-nav-title"><a href="/">Mr.Chen's Blog</a></div><div class="intro-nav-label-box"><a href="/">Home</a><a href="/about">About</a><a href="/archives">Archives</a><a href="/tags">Tags</a></div><i class="fa fa-bars intro-nav-menu"><div class="intro-nav-drop"><a href="/">Home</a><a href="/about">About</a><a href="/archives">Archives</a><a href="/tags">Tags</a></div></i><div class="clear"></div></section></nav><h1 class="post-title">代码审计之CppCheck</h1><div class="post-intros"><div class="post-intro-meta"><span class="post-intro-time"><i class="post-intro-calendar fa fa-calendar"></i><span>2019/04/22</span></span><span class="busuanzi-pv" id="busuanzi_container_page_pv"><i class="post-intro-calendar fa fa-user-o"></i><span id="busuanzi_value_page_pv"></span></span><span class="post-intro-tags"><a class="intro-tag fa fa-tag" href="javascript:void(0)" date-tags="漏洞挖掘"> 漏洞挖掘</a></span></div></div></header><article class="cxo-up" id="cxo-content-outer"><section id="cxo-content-inner"><article class="article-entry" id="post"><h1 id="代码审计之CppCheck"><a href="#代码审计之CppCheck" class="headerlink" title="代码审计之CppCheck"></a>代码审计之CppCheck</h1><hr>
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>这段时间由于工作原因需要实现一款源代码分析工具，在网上搜刮了一波发现一款名叫cppcheck的源代码工具挺不错。还有一款叫TscanCode的也蛮好不过是基于cppcheck写的，并且最后的更新在18年，而cppcheck最近还在更新，所以就选择直接分析cppcheck的整体架构。<br>首先我们来了解一下什么是cppcheck，它是一款对于C/C++代码做静态扫描工具，力求发现源码中存在的一些漏洞，目前支持以下几种类型规则的扫描(只是简单列出一些,还有许多感兴趣的可以下载看看)：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line"><span class="number">1.</span>空指针检查，包含可疑的空指针，判空后解引用等共<span class="number">3</span>类subid检查。</div><div class="line"><span class="number">2.</span>数据越界，Sprintf_S越界共<span class="number">1</span>类subid检查。</div><div class="line"><span class="number">3.</span>内存泄漏，分配和释放不匹配同<span class="number">1</span>类的subid检查。</div><div class="line"><span class="number">4.</span>逻辑错误，重复的代码分支，<span class="keyword">bool</span>类型和<span class="keyword">int</span>类型比较，表达式恒等或恒不等共<span class="number">18</span>类检查。</div><div class="line"><span class="number">5.</span>可疑代码检查，<span class="keyword">if</span>判断中含可疑=号，自由变量返回局部变量共<span class="number">15</span>类检查。</div><div class="line"><span class="number">6.</span>运算错误，判断无符号数小于<span class="number">0</span>，对<span class="keyword">bool</span>类型进行++自增等，共<span class="number">11</span>类检查。</div></pre></td></tr></table></figure></p>
+<h2 id="架构分析"><a href="#架构分析" class="headerlink" title="架构分析"></a>架构分析</h2><p>分析开源软件我们首先要了解这个软件的整体架构，这里我打算先从文件结构入手。cppcheck总共分为两个模块，我叫它为前端模块，核心模块。前端模块主要通过对用户的输入(命令行)做分析，得到用户想要的选项，然后把这些选项保存到一个Setting类中。然后解析用户需要分析的文件路径，如果该路径属于一个目录则遍历获取该目录下的所有符合的文件作为目标，保存起来用作后续的分析，如果用户直接给出了目标路径那么直接用就行。<br>完成对目标文件列表的获取之后通过循环遍历把单个文件传给核心模块进行源码分析，分析完成后生成AST（抽象语法树）和符号数据库，利用内置的检测方案类挨个对该符号数据库做模型匹配检查，如果存在相同则判定存在漏洞，通过日志输出模块返回给用户。不断遍历直到所有文件都检查完毕。如果后续需要添加别的检测也挺方便，直接按照原有检测类的格式写一个自己的类就行。</p>
+<h3 id="各个类的含义"><a href="#各个类的含义" class="headerlink" title="各个类的含义"></a>各个类的含义</h3><ul>
+<li><p>公共模块</p>
+<ul>
+<li>Settings::[字段用来存放用户的选项]</li>
+<li>ErrorLogger::class[基类:输入输出模块]</li>
+</ul>
+</li>
+<li><p>前端处理模块(处理用户参数)</p>
+<ul>
+<li>CppCheckExecutor::class[结合CmdLineParse类初始化Settings类中的成员选项，获取检测文件列表，循环调用CppCheck类的检测接口对文件做检测操作]</li>
+<li>CmdLineParse::class[解析命令行参数,初始化Settings类成员]</li>
+<li>ThreadExecutor::class[多线程类,多线程检测]</li>
+</ul>
+</li>
+<li><p>中间处理模块 &lt;- 日志输出模块</p>
+<ul>
+<li>CppCheck::class[负责对前端模块传入的文件做符号化处理,生成语法树,符号数据库,调用后端检测模块]</li>
+<li>Token::class[对目标文件做简单的分词处理,生成单个token]</li>
+<li>TokenList::class[一个tokenlist表示一个检测文件,由多个token构成]</li>
+<li>Preprocess::class[预处理类]</li>
+<li>Tokenizer::class[更复杂的tokenlist结果，用来生成语法树,数据库列表]<br>数据模块</li>
+<li>SymbolDatabase::class[符号数据库类，记录程序中所有变量，函数范围，类和结构体范围等信息]</li>
+</ul>
+</li>
+<li><p>后端处理模块(负责检查)</p>
+<ul>
+<li>check::class[所有检测类的基类]</li>
+<li>check**:class….[各种检测类，继承check]</li>
+</ul>
+</li>
+</ul>
+<h3 id="大概流程"><a href="#大概流程" class="headerlink" title="大概流程"></a>大概流程</h3><p>一:前端模块</p>
+<ul>
+<li>1.解析命令行初始化Settings类</li>
+<li>2.加载内置cfg配置文件</li>
+<li>3.获取检查文件列表</li>
+<li>4.循环遍历检查文件传入给核心模块</li>
+</ul>
+<p>二:核心模块</p>
+<ul>
+<li>1.对前端传入的文件名做基础检查</li>
+<li>2.词法分析以及预处理<ul>
+<li>2.1.通过simplecpp::TokenList的初始化对源文件做词法分析生成tokens1</li>
+<li>2.2.通过preprocessor.loadFiles获取源文件的头文件,并对非系统库头文件做分词处理</li>
+<li>2.3.预处理token:删除注释,处理asm指令,替换宏操作(removeComments &amp;&amp; setDirectives &amp;&amp;</li>
+</ul>
+</li>
+<li>3.语法分析，生成Tokenizer实例<ul>
+<li>3.1.整合前面的词法树，建立token双向链表(mTokenizer.createTokens)</li>
+</ul>
+</li>
+<li>4.建立语法树，建立符号数据库(simplifyTokens1)<ul>
+<li>4.1.第一次简化token双向列表,各种检查,删除一些没用的token:(Tokenizer::simplifyTokenList1)</li>
+<li>4.2.创建Ast语法树(createAst)</li>
+<li>4.3.验证Ast语法树(validateAst)</li>
+<li>4.5.创建符号数据库(createSymbolDatabase)</li>
+<li>4.6.设置token列表中的类型(setValueTypeInTokenList)</li>
+</ul>
+</li>
+<li>5.遍历调用检测类注册的所有runcheck函数(checkNormalTokens)</li>
+<li>6.二次简化(Tokenizer::simplifyTokenList2)<ul>
+<li>6.1.首先删除Ast语法树和符号数据库(deleteSymbolDatabase &amp;&amp; clearAst())</li>
+<li>6.2.对tokenlist各种优化(删除各种没用的冗余代码，变量简化，运算简化)</li>
+<li>6.3.创建Ast语法树并验证(createAst &amp;&amp; validateAst)</li>
+<li>6.4.创建符号数据库(createSymbolDatabase)</li>
+</ul>
+</li>
+<li>7.遍历调用检测类注册的所有runSimplifiedChecks函数(checkSimplifiedTokens)</li>
+</ul>
+<p>三:检测模块</p>
+<ul>
+<li>1.调用各模块的检测函数</li>
+</ul>
+<p>结果会通过ErrorLogger类输出到控制台(也可以指定选项写入到xml文件中)。<br>这里只是列了个大概流程还有许多编译原理的操作后续再研究研究。<br><img src="map.jpg" alt=""></p>
+<h2 id="方案分析"><a href="#方案分析" class="headerlink" title="方案分析"></a>方案分析</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div></pre></td><td class="code"><pre><div class="line"><span class="function"><span class="keyword">void</span> <span class="title">f1</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> buf[])</span> </span>&#123;</div><div class="line">    <span class="keyword">char</span> c = buf[<span class="number">4</span>];</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">void</span> <span class="title">f2</span><span class="params">()</span> </span>&#123;</div><div class="line">    <span class="keyword">char</span> x[<span class="number">2</span>];</div><div class="line">    f1(x);</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>案例比较简单，大概的思路如下：<br>1.1.遍历所有函数(f1,f2)<br>1.2.获取每个函数所有变量定义并过滤掉不是数组定义的变量<br>1.3.通过ArrayInfo类记录每个数组定义的信息((数组元素个数,数组声明id等一系列信息))到arrayInfos列表中<br>1.4.对该函数(f1)中所有数组(arrayInfos)的使用做检查<br>1.5.检查到f1(x);这句时会发现这是把x数组做函数形参的使用，然后获取f1函数的信息<br>1.6.根据调用时形参x在参数列表中的索引,获取f1函数定义时对应索引的实参buf<br>1.7.遍历f1函数的操作，判断buf在该范围内的使用,如果属于[]取值操作则判断[B]中的数值B是否大于等于arrayInfos中保存的x数组定义时的值，如果大于则输出arrayIndexOutOfBoundsError信息<br><figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">Checking G:\test.c ...</div><div class="line">[G:\test.c:2]: (style) Variable 'c' is assigned a value that is never used.</div><div class="line">[G:\test.c:7] -&gt; [G:\360work\代码审计项目\test.c:2]: (error) Array 'x[2]' accessed at index 4, which is out of bounds.</div><div class="line">[G:\test.c:5]: (style) The function 'f2' is never used.</div></pre></td></tr></table></figure></p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>分析开源软件时首先确定几个关键函数(关键点)，搞明白程序大概流程。然后再根据实际需求或对感兴趣的点向下扩展做详细分析。感觉从一开始就一个函数一个函数的调太慢了。不知道有没有什么快速分析的方法。<br>什么样的算是关键函数呢?（顶层函数??）<br>像剥洋葱一样一层一层的剥开。</p>
+<h3 id="阅读总结"><a href="#阅读总结" class="headerlink" title="阅读总结"></a>阅读总结</h3><p>1.先了解系统架构与行为模式，再细读。<br>2.阅读代码在于了解全貌而非细节。<br>3.从上而下理清楚架构，便于轻易理解组成关系。<br>4.根据需要了解细度，再决定展开层数。<br>5.在需要了解任何片段代码细节实现时，能很快在大脑中对应到具体的代码位置，才是继续细度代码的时机。</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://wenku.baidu.com/view/b6a94afbaaea998fcd220e4b.html" target="_blank" rel="external">https://wenku.baidu.com/view/b6a94afbaaea998fcd220e4b.html</a>  架构分析<br><a href="https://wenku.baidu.com/view/7d9804c7bb4cf7ec4afed0aa.html" target="_blank" rel="external">https://wenku.baidu.com/view/7d9804c7bb4cf7ec4afed0aa.html</a>  架构分析(cppcheck的整体架构)<br><a href="https://wenku.baidu.com/view/018b5a35a32d7375a41780ab.html" target="_blank" rel="external">https://wenku.baidu.com/view/018b5a35a32d7375a41780ab.html</a>  方案分析(cppcheck检查项的实现)<br><a href="https://wenku.baidu.com/view/f2d913345a8102d276a22fc2.html" target="_blank" rel="external">https://wenku.baidu.com/view/f2d913345a8102d276a22fc2.html</a>  方案规则书写</p>
+</article><!-- lincense--><div class="license-wrapper"><p> <span>Author:  </span><a href="http://github.com">Let_go</a></p><p> <span>Link:  </span><a href="http://github.com/2019/04/22/代码审计之CppCheck/">http://github.com/2019/04/22/代码审计之CppCheck/</a></p><p> <span>Copyright:  </span><span>All articles in this blog are licensed under <a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/3.0">CC BY-NC-SA 3.0</a> unless stating additionally.</span></p></div><div class="post-paginator"><a class="prevSlogan" href="/2019/04/29/python自动化生成Word报告/" title="python自动化生成Word报告"><span>< PreviousPost</span><br><span class="prevTitle">python自动化生成Word报告</span></a><a class="nextSlogan" href="/2019/04/10/CVE-2019-2054/" title="CVE-2019-2054"><span>NextPost ></span><br><span class="nextTitle">CVE-2019-2054</span></a><div class="clear"></div></div><div id="comment"></div></section></article><footer id="cxo-footer-outer"><div id="cxo-footer-inner"><p class="footer-container"><span>Site by </span><a href="http://hexo.io"><span>Hexo</span></a><span> | theme </span><a href="https://github.com/Longlongyu/hexo-theme-Cxo"><span>Cxo</span></a></p><i class="fa fa-user"> </i><span id="busuanzi_value_site_uv"></span><span> | </span><i class="fa fa-eye"> </i><span id="busuanzi_value_site_pv"></span></div></footer><!-- catelog--><div class="toc-wrapper" style="top: 70vh;"><div class="toc-catalog"><i class="fa fa-list"> </i><span>CATALOG</span></div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#代码审计之CppCheck"><span class="toc-number">1.</span> <span class="toc-text">代码审计之CppCheck</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-number">1.1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#架构分析"><span class="toc-number">1.2.</span> <span class="toc-text">架构分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#各个类的含义"><span class="toc-number">1.2.1.</span> <span class="toc-text">各个类的含义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#大概流程"><span class="toc-number">1.2.2.</span> <span class="toc-text">大概流程</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#方案分析"><span class="toc-number">1.3.</span> <span class="toc-text">方案分析</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-number">1.4.</span> <span class="toc-text">总结</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#阅读总结"><span class="toc-number">1.4.1.</span> <span class="toc-text">阅读总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#参考"><span class="toc-number">1.5.</span> <span class="toc-text">参考</span></a></li></ol></li></ol></div><!-- top--><i class="fa fa-arrow-up close" id="go-up" aria-hidden="true"></i></body></html>
