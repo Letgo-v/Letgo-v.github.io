@@ -1,0 +1,124 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"><meta name="author" content="Let_go"><meta name="renderer" content="webkit"><meta name="copyright" content="Let_go"><meta name="keywords" content="Let_go"><meta name="description" content="null"><meta name="Cache-Control" content="no-cache"><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"><title>StrandHogg漏洞-Activity劫持 · Mr.Chen's Blog</title><link rel="stylesheet" href="/css/style.css?v=2018.7.9"><link rel="stylesheet" href="/css/animation.css?v=2018.7.9"><link rel="icon" href="/img/assets/favicon.ico"><link rel="stylesheet" href="https://cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css?version=1.5.6"><!-- scripts--><script>(function( w ){
+  "use strict";
+  // rel=preload support test
+  if( !w.loadCSS ){
+    w.loadCSS = function(){};
+  }
+  // define on the loadCSS obj
+  var rp = loadCSS.relpreload = {};
+  // rel=preload feature support test
+  // runs once and returns a function for compat purposes
+  rp.support = (function(){
+    var ret;
+    try {
+      ret = w.document.createElement( "link" ).relList.supports( "preload" );
+    } catch (e) {
+      ret = false;
+    }
+    return function(){
+      return ret;
+    };
+  })();
+
+  // if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+  // then change that media back to its intended value on load
+  rp.bindMediaToggle = function( link ){
+    // remember existing media attr for ultimate state, or default to 'all'
+    var finalMedia = link.media || "all";
+
+    function enableStylesheet(){
+      link.media = finalMedia;
+    }
+
+    // bind load handlers to enable media
+    if( link.addEventListener ){
+      link.addEventListener( "load", enableStylesheet );
+    } else if( link.attachEvent ){
+      link.attachEvent( "onload", enableStylesheet );
+    }
+
+    // Set rel and non-applicable media type to start an async request
+    // note: timeout allows this to happen async to let rendering continue in IE
+    setTimeout(function(){
+      link.rel = "stylesheet";
+      link.media = "only x";
+    });
+    // also enable media after 3 seconds,
+    // which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+    setTimeout( enableStylesheet, 3000 );
+  };
+
+  // loop through link elements in DOM
+  rp.poly = function(){
+    // double check this to prevent external calls from running
+    if( rp.support() ){
+      return;
+    }
+    var links = w.document.getElementsByTagName( "link" );
+    for( var i = 0; i < links.length; i++ ){
+      var link = links[ i ];
+      // qualify links to those with rel=preload and as=style attrs
+      if( link.rel === "preload" && link.getAttribute( "as" ) === "style" && !link.getAttribute( "data-loadcss" ) ){
+        // prevent rerunning on link
+        link.setAttribute( "data-loadcss", true );
+        // bind listeners to toggle media back
+        rp.bindMediaToggle( link );
+      }
+    }
+  };
+
+  // if unsupported, run the polyfill
+  if( !rp.support() ){
+    // run once at least
+    rp.poly();
+
+    // rerun poly on an interval until onload
+    var run = w.setInterval( rp.poly, 500 );
+    if( w.addEventListener ){
+      w.addEventListener( "load", function(){
+        rp.poly();
+        w.clearInterval( run );
+      } );
+    } else if( w.attachEvent ){
+      w.attachEvent( "onload", function(){
+        rp.poly();
+        w.clearInterval( run );
+      } );
+    }
+  }
+
+
+  // commonjs
+  if( typeof exports !== "undefined" ){
+    exports.loadCSS = loadCSS;
+  }
+  else {
+    w.loadCSS = loadCSS;
+  }
+}( typeof global !== "undefined" ? global : this ) );</script><script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js" defer></script><script src="/js/main.js?v=2018.7.9" defer></script><!-- fancybox--><link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'"><script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" defer></script><!-- busuanzi--><script async src="//dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script></head><body><section class="profile-close" id="cxo-profile"><div class="profile-avatar"><i class="fa fa-caret-left"></i><img src="/img/assets/avatar.jpg"></div><!--.profile-saying
+  i.fa.fa-comment
+  .saying--><div class="cxo-profile-inner"><div class="profile-name">Let_go</div><div class="profile-signature">人生如棋,我愿为卒。行动虽慢,可谁曾见我后退一步。</div><div class="read-progress"></div></div></section><header id="cxo-intro" style="height: 70vh;background-image: url(/img/intro/index-bg.png);"><nav id="cxo-intro-nav"><section><div class="intro-nav-title"><a href="/">Mr.Chen's Blog</a></div><div class="intro-nav-label-box"><a href="/">Home</a><a href="/about">About</a><a href="/archives">Archives</a><a href="/tags">Tags</a></div><i class="fa fa-bars intro-nav-menu"><div class="intro-nav-drop"><a href="/">Home</a><a href="/about">About</a><a href="/archives">Archives</a><a href="/tags">Tags</a></div></i><div class="clear"></div></section></nav><h1 class="post-title">StrandHogg漏洞-Activity劫持</h1><div class="post-intros"><div class="post-intro-meta"><span class="post-intro-time"><i class="post-intro-calendar fa fa-calendar"></i><span>2019/12/05</span></span><span class="busuanzi-pv" id="busuanzi_container_page_pv"><i class="post-intro-calendar fa fa-user-o"></i><span id="busuanzi_value_page_pv"></span></span><span class="post-intro-tags"><a class="intro-tag fa fa-tag" href="javascript:void(0)" date-tags="Android_System"> Android_System</a></span></div></div></header><article class="cxo-up" id="cxo-content-outer"><section id="cxo-content-inner"><article class="article-entry" id="post"><h1 id="StrandHogg漏洞-Activity劫持"><a href="#StrandHogg漏洞-Activity劫持" class="headerlink" title="StrandHogg漏洞-Activity劫持"></a>StrandHogg漏洞-Activity劫持</h1><hr>
+<h3 id="背景简述"><a href="#背景简述" class="headerlink" title="背景简述"></a>背景简述</h3><p>该问题最早在15年的USENIX安全研讨会就被提出了，研究人员从理论上描述了该漏洞的实现方法，但Google否认了其严重性。<br>之后攻击方法被武汉大学发表了论文《一种新的基于APP启动模式的劫持攻击方案》。<br>前段时间被挪威一家APP安全公司报道该特性漏洞并证明该问题已被多个恶意应用利用，才引起了大家的注意，并被命名为StrandHogg漏洞。<br>该漏洞并不能直接绕过用户获取权限，而需要伪装成正常应用通过欺骗用户来获取权限，包括android10在内的所有android版本都受该漏洞的影响。</p>
+<h3 id="前置知识点"><a href="#前置知识点" class="headerlink" title="前置知识点"></a>前置知识点</h3><h4 id="Activity劫持"><a href="#Activity劫持" class="headerlink" title="Activity劫持"></a>Activity劫持</h4><p>该漏洞的利用本质其实就是Activity劫持，简单来说就是当用户打开正常应用的Activit时，恶意的应用利用它自己实现的Activity覆盖掉正常应用的Activity，实现对用户的欺骗，从而达到我们想要的目的。常用于劫持正常登录页面欺骗用户达到获取用户账号密码的效果。<br>在讲解该漏洞原理之前我们先来简单看下该漏洞涉及到的一些知识点。</p>
+<h4 id="Activity状态转换"><a href="#Activity状态转换" class="headerlink" title="Activity状态转换"></a>Activity状态转换</h4><p>首先是Activity，Activity是Android组件中最基本也是最常见的四大组件之一。在一个Android应用中，一个Activity通常就是一个单独的屏幕，上面可以显示一些控件也可以监听并处理用户的事件做出相应。<br>一个Activity共有4种状态，分别是运行，暂停，停止与销毁。</p>
+<ul>
+<li>运行状态就是当Activity处于屏幕前台时，我们能与之交互的状态，此时的Activity处于活动栈的最顶端。</li>
+<li>暂停状态则是当Activity失去焦点时，但部分界面用户仍然可见时的状态。</li>
+<li>停止状态是当前Activity完全被另一个Activity覆盖掉的状态，此时它仍然保持所有状态，只是该Activity不可见。</li>
+<li>当一个Activity被关闭时进入销毁状态，一般由用户操作或内存不足时系统强制销毁所致。</li>
+</ul>
+<p>通过下面的这张图我们看下几种状态之间的互相转换以及每种状态转换时会触发的函数。<br>一个Activity的状态转换流程如下：<br><img src="Image.png" alt="转换流程"><br>Activity相关的七个生命周期函数，分别为onCreate()，onRestart()，onStart()，onReusme()，onPause()，onStop()，onDestory()。</p>
+<h4 id="Task任务，Activity栈"><a href="#Task任务，Activity栈" class="headerlink" title="Task任务，Activity栈"></a>Task任务，Activity栈</h4><p>然后是任务(Task)的概念，任务就是一些相关联的Activity的集合，当我们打开手机的任务管理器时，界面上显示的就是一个个任务。一个任务中的Activity可以来自不同的应用程序。比如程序A的Activity打开程序B的一个Activity，这两个Activity都会保存在一个任务中，这样实现是为了更好的用户体验。<br>每个任务中的Activity集合都是以栈的方式(后进先出)进行管理。所有Activity都保存在栈中，以便用户点击”后退”按钮时导航到之前的Activity恢复执行。<br>屏幕上始终显示返回栈顶部的Activity，我们称它为前台Activity，与之关联的任务是前台任务，因此一次只能有一个前台任务，其他的任务都属于后台任务。当任务被切换到后台时，任务中的所有Activity都会停止，并在任务的返回栈中保持不变，这样当用户再次打开该任务时就可以从上次停止的地方接着运行。<br>这里需要注意的地方就是虽然在android中存在沙箱机制每个应用都受到android沙箱的保护，但来自不同应用程序的Activity可以共存于同一任务中，这给我们劫持Activity提供了机会。<br>android沙箱：该机制主要基于linux的用户权限保护和进程隔离实现的，每个应用对应一个用户，不同应用间相互隔离，只能访问属于自己的资源，不能访问其他应用的数据。</p>
+<h4 id="taskAffinity-任务相关性"><a href="#taskAffinity-任务相关性" class="headerlink" title="taskAffinity(任务相关性)"></a>taskAffinity(任务相关性)</h4><p>(也就是通过该参数来控制恶意Activity去劫持哪个页面)<br>与任务相关的属性叫做taskAffinity(任务相关性)，在manifest中可以指定这个属性的值，该属性用来标识一个Activity所需要的任务名称。如果在manifest文件中注册Activity时不明确指定taskAffinity属性那么默认该Activity所需任务的名字就是所属应用的包名。所以默认情况下一个app中所有Activity都在同一个task中。当Activity设置了taskAffinity属性，那么这个Activity在被创建时就会运行在和taskAffinity相同的任务中，如果没找到该任务，就新建taskAffinity指定的任务，并将该Activity添加到其中。一般该属性都是和singleTask模式或allowTaskReparenting属性配合使用，其他情况下没什么意义。</p>
+<h4 id="4种启动模式"><a href="#4种启动模式" class="headerlink" title="4种启动模式"></a>4种启动模式</h4><p>最后来看下Activity启动的4种模式，不同模式实现的效果会不一样。<br>standard模式(默认启动模式)：这种模式下Activity可以有多个实例，无论任务栈中是否已经存在该Activity的实例都会创建一个新的Activity实例。<br>singleTop模式(栈顶复用模式)：该模式与Standard模式有些类似，区别在于如果需要启动的Activity在栈顶，不会创建新的实例只是调用该Activity的onNewIntent方法。如果不在栈顶则会创建新的实例。<br>singleTask模式(栈内复用模式)：这种模式同一个Task内只有一个实例，如果Activity已经位于栈顶，那么系统就不会再创建新的Activity实例，和singleTop一样。但如果Activity存在但不位于栈顶则会将该Activity移到栈顶，并将它上面的Activity出栈。<br>singleInstance模式(单例模式)：这种模式也是单例模式，但和SingleTask模式不一样，singleInstance的Activity不予许自己的task中存在其他的Activity实例，也就是该模式的Activity应用是task中唯一的Activity实例。</p>
+<h3 id="攻击思路和模型"><a href="#攻击思路和模型" class="headerlink" title="攻击思路和模型"></a>攻击思路和模型</h3><h4 id="攻击思路"><a href="#攻击思路" class="headerlink" title="攻击思路"></a>攻击思路</h4><p>有了上面的基础知识现在我们来看看如何实现我们想要的Activity劫持。<br>这里有两种情况可以达到我们的效果，首先我们假设有两个应用，恶意应用A，受害者应用B，对应的是劫持Activity-A，任务名为Task-A，被劫持Activity-B，任务名为Task-B。</p>
+<p>第一种情况<br>当受害者应用B中被劫持Activity-B的android:launchMode=”standard”或”singleTop”时，我们可以把恶意应用A中用来做劫持的Activity-A的taskAffinity属性值设置为与被劫持Activity-B的taskAffinity值一致(Task-B)，并且把Activity-A的allowTaskReparenting属性设置为true，这样当受害者应用B启动时，用来劫持的Activity-A就会从启动它的Task-A转换为受害者应用的Task-B的栈顶进行显示。从而完成我们Activity劫持的效果。<br>不过allowTaskReparenting有个问题，就是只有当Affinity定义的需要转移的Task-B创建时，才会触发重新设置Task的操作，所以这种攻击恶意应用A必须在受害者应用B启动之前就启动，否则劫持就会失败。<br>解决的方法就是启动Activity-A的时候通过设置FLAG_ACTIVITY_NEW_TASK属性来实现劫持，该属性的效果是如果Affinity设置的Task已经存在，则直接将Activity添加到该Task中，如果不存在则创建一个新的Task，并将Activity添加进去。这样就避免第一种情况恶意应用A后启动导致没法加入到Task-B的问题。</p>
+<p>第二种情况<br>当受害者应用B中被劫持Activity-B的android:launchMode=”singleInstance”时，由于该模式属于单例模式，不允许自己的Task中存在其他的Activity实例，每次singleInstance属性的Activity启动时无论后台是否存在同名的Task，系统都会创建一个新的Task并将当前的Activity添加到该任务的Activity栈中，之后不可再给该任务添加别的Activity，该任务一直以单Activity的形式存在。但这有个问题就是如果后台不存在同名任务，那么该流程属于正常流程。一旦存在同名任务，系统仍然会创建一个新的Task并赋予不同的Taskid，这就导致系统中存在两个同Task名但不同id的Task，而系统运行任务列表又只会显示最近运行的任务，这就给人一种两者位于同一任务的错觉。</p>
+<h4 id="攻击模型"><a href="#攻击模型" class="headerlink" title="攻击模型"></a>攻击模型</h4><p>现在我们来看下利用上面讲到的知识如何去实现一个Activity劫持。<br>android:launchMode=”standard” + android:allowTaskReparenting=”true”<br>劫持（伪造task，当目标应用启动时，会显示恶意Activity），点击返回后进入目标正常Activity<br>如果目标应用先启动的话则劫持失败<br><img src="Standard_allowTaskReparenting.png" alt="Standard_allowTaskReparenting"><br>[视频演示-1.mp4]</p>
+<p>android:launchMode=”standard” + Intent.FLAG_ACTIVITY_NEW_TASK(android:launchMode=”singleTask”)<br>劫持（伪造task，当目标应用启动时，会显示恶意Activity），点击返回后直接退出到桌面<br>如果目标应用先启动的话仍然可以劫持，点击返回后进入目标正常Activity<br><img src="Standard_New_Task_1.png" alt="Standard_New_Task_1"><br>[视频演示-2-1.mp4]<br><img src="Standard_New_Task_2.png" alt="Standard_New_Task_2"><br>[视频演示-2-2.mp4]</p>
+<p>android:launchMode=”singleInstance”<br>劫持（创建一个与目标应用Task名一致但id不一样的新Task，由于系统运行任务列表只显示最近运行的任务，所以给人的感觉就像是被劫持一样）<br><img src="singleInstance.png" alt="singleInstance"><br>[视频演示-3.mp4]</p>
+<h3 id="应用场景"><a href="#应用场景" class="headerlink" title="应用场景"></a>应用场景</h3><h4 id="Activity劫持-网络钓鱼"><a href="#Activity劫持-网络钓鱼" class="headerlink" title="Activity劫持-网络钓鱼"></a>Activity劫持-网络钓鱼</h4><p>通过伪造一个与目标Activity一样的恶意Activity比如用户登录界面，充值页面等，当用户点开目标界面时通过上述提到的方法去劫持调目标Activity从而欺骗用户达到钓鱼效果。</p>
+<h4 id="防卸载，勒索等"><a href="#防卸载，勒索等" class="headerlink" title="防卸载，勒索等"></a>防卸载，勒索等</h4><p>大概的意思就是通过Activity的excludeFromRecents属性把恶意应用的Activity隐藏起来，然后通过监控任务来一直启动恶意Activity避免Activity被关闭，这样每次点击正常目标应用显示的都会是恶意Activity，从而达到防卸载，拒绝打开目标应用的效果，感觉其实和上面的原理还是一样的。</p>
+<h3 id="防护措施"><a href="#防护措施" class="headerlink" title="防护措施"></a>防护措施</h3><p>由于该问题属于android设计上的一个缺陷所以目前对于这类劫持还没有比较好的防御方案，不过可以适当给用户一些警告，比如提示用户登录界面被覆盖，应用被切换到后台之类的提示。避免用户把恶意的<br>通过对应用顶层Activity监控，使用白名单机制避免别的应用覆盖本应用的页面。</p>
+<h3 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h3><p><a href="https://segmentfault.com/a/1190000018978183" target="_blank" rel="external">9.0源码分析</a><br><a href="https://pomelojiang.github.io/android_framework_start_activity_1" target="_blank" rel="external">源码分析</a><br><a href="https://juejin.im/post/5ce900cdf265da1b827a783a" target="_blank" rel="external">源码分析-比较详细</a><br><a href="https://www.jianshu.com/p/2c73be80ce8d" target="_blank" rel="external">Android启动模式和taskAffinity属性详解</a><br><a href="https://mp.weixin.qq.com/s/NaokUlH3EDaOHjCkb_U0Bg" target="_blank" rel="external">安卓特性漏洞重浮水面，已被多个恶意应用利用</a></p>
+</article><!-- lincense--><div class="license-wrapper"><p> <span>Author:  </span><a href="http://github.com">Let_go</a></p><p> <span>Link:  </span><a href="http://github.com/2019/12/05/StrandHogg漏洞-Activity劫持/">http://github.com/2019/12/05/StrandHogg漏洞-Activity劫持/</a></p><p> <span>Copyright:  </span><span>All articles in this blog are licensed under <a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/3.0">CC BY-NC-SA 3.0</a> unless stating additionally.</span></p></div><div class="post-paginator"><a class="nextSlogan" href="/2019/10/08/CVE-2019-2215/" title="CVE-2019-2215"><span>NextPost ></span><br><span class="nextTitle">CVE-2019-2215</span></a><div class="clear"></div></div><div id="comment"></div></section></article><footer id="cxo-footer-outer"><div id="cxo-footer-inner"><p class="footer-container"><span>Site by </span><a href="http://hexo.io"><span>Hexo</span></a><span> | theme </span><a href="https://github.com/Longlongyu/hexo-theme-Cxo"><span>Cxo</span></a></p><i class="fa fa-user"> </i><span id="busuanzi_value_site_uv"></span><span> | </span><i class="fa fa-eye"> </i><span id="busuanzi_value_site_pv"></span></div></footer><!-- catelog--><div class="toc-wrapper" style="top: 70vh;"><div class="toc-catalog"><i class="fa fa-list"> </i><span>CATALOG</span></div><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#StrandHogg漏洞-Activity劫持"><span class="toc-number">1.</span> <span class="toc-text">StrandHogg漏洞-Activity劫持</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#背景简述"><span class="toc-number">1.0.1.</span> <span class="toc-text">背景简述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#前置知识点"><span class="toc-number">1.0.2.</span> <span class="toc-text">前置知识点</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Activity劫持"><span class="toc-number">1.0.2.1.</span> <span class="toc-text">Activity劫持</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Activity状态转换"><span class="toc-number">1.0.2.2.</span> <span class="toc-text">Activity状态转换</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Task任务，Activity栈"><span class="toc-number">1.0.2.3.</span> <span class="toc-text">Task任务，Activity栈</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#taskAffinity-任务相关性"><span class="toc-number">1.0.2.4.</span> <span class="toc-text">taskAffinity(任务相关性)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4种启动模式"><span class="toc-number">1.0.2.5.</span> <span class="toc-text">4种启动模式</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#攻击思路和模型"><span class="toc-number">1.0.3.</span> <span class="toc-text">攻击思路和模型</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#攻击思路"><span class="toc-number">1.0.3.1.</span> <span class="toc-text">攻击思路</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#攻击模型"><span class="toc-number">1.0.3.2.</span> <span class="toc-text">攻击模型</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#应用场景"><span class="toc-number">1.0.4.</span> <span class="toc-text">应用场景</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Activity劫持-网络钓鱼"><span class="toc-number">1.0.4.1.</span> <span class="toc-text">Activity劫持-网络钓鱼</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#防卸载，勒索等"><span class="toc-number">1.0.4.2.</span> <span class="toc-text">防卸载，勒索等</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#防护措施"><span class="toc-number">1.0.5.</span> <span class="toc-text">防护措施</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#参考"><span class="toc-number">1.0.6.</span> <span class="toc-text">参考</span></a></li></ol></li></ol></li></ol></div><!-- top--><i class="fa fa-arrow-up close" id="go-up" aria-hidden="true"></i></body></html>
