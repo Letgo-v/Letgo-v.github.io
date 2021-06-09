@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://github.com/"/>
-  <updated>2019-12-19T10:25:40.489Z</updated>
+  <updated>2020-01-05T11:51:58.814Z</updated>
   <id>http://github.com/</id>
   
   <author>
@@ -16,36 +16,87 @@
   <generator uri="http://hexo.io/">Hexo</generator>
   
   <entry>
+    <title>Android APP抓包总结</title>
+    <link href="http://github.com/2020/01/04/Android-APP%E6%8A%93%E5%8C%85%E6%80%BB%E7%BB%93/"/>
+    <id>http://github.com/2020/01/04/Android-APP抓包总结/</id>
+    <published>2020-01-04T02:14:02.000Z</published>
+    <updated>2020-01-05T11:51:58.814Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="Android-APP抓包总结"><a href="#Android-APP抓包总结" class="headerlink" title="Android APP抓包总结"></a>Android APP抓包总结</h1><hr>
+<h3 id="常用的抓包工具"><a href="#常用的抓包工具" class="headerlink" title="常用的抓包工具"></a>常用的抓包工具</h3><p>BurpSuite_pro<br>Fiddler 4<br>Charles-proxy<br>tcpdump和wireshark用来解决不是使用HTTP/HTTPS协议传输数据的app，通过tcpdump抓包，wireshark工具解析数据包。</p>
+<h3 id="常规抓包流程"><a href="#常规抓包流程" class="headerlink" title="常规抓包流程"></a>常规抓包流程</h3><p>1.首先我们需要让手机端与PC端处于同一网段（连上同一个wifi），<br>2.在PC查看主机IP地址通过cmd窗口运行ipconfig命令即可获取。<br><img src="ipconfig.png" alt="ipconfig"><br>3.在手机端的wifi界面设置为手动代理，代理主机设置为PC端的IP，代理端口我们设置为8888（随便设置，只要和抓包工具一致）<br>4.然后打开抓包工具进行抓包。</p>
+<p>5.通过手机浏览器访问以下网址，然后下载抓包工具证书，进行证书安装<br>BurpSuite_pro：<a href="http://burp" target="_blank" rel="external">http://burp</a><br>Charles-proxy：<a href="http://chls.pro/ssl" target="_blank" rel="external">http://chls.pro/ssl</a><br>Fiddler：<a href="http://ipv4.fiddler:8888/" target="_blank" rel="external">http://ipv4.fiddler:8888/</a></p>
+<p>6.抓包效果图<br>BurpSuite_pro：<img src="BurpSuite.png" alt="BurpSuite_pro"><br>Fiddler：<img src="Fiddler.png" alt="Fiddler"><br>Charles-proxy：<img src="Charles_proxy.png" alt="Charles_proxy"></p>
+<p>7.实际测试时，有些应用虽然能够抓包，但是应用端却显示访问错误的界面，应该是应用或服务器做了证书校验导致的。<br>（关闭了Xposed+JustTrustMe就能访问了）</p>
+<h3 id="遇到的问题"><a href="#遇到的问题" class="headerlink" title="遇到的问题"></a>遇到的问题</h3><h4 id="SSL-pinning"><a href="#SSL-pinning" class="headerlink" title="SSL pinning"></a>SSL pinning</h4><p>SSL pinning就是通过在客户端对目标服务器的证书或公钥进行锁定，这样在客户端与服务器进行交互的时候，客户端就会验证服务器发来的CA证书或公钥，如果验证通过则有效，否则无效。</p>
+<h4 id="服务器双向验证"><a href="#服务器双向验证" class="headerlink" title="服务器双向验证"></a>服务器双向验证</h4><p>双向链接就是在基于SSLpinning的基础上，添加了服务端对客户端的验证。除了客户端会去验证服务端外，服务端还会去验证客户端是否有效。</p>
+<h3 id="如何分辨是否存在校验"><a href="#如何分辨是否存在校验" class="headerlink" title="如何分辨是否存在校验"></a>如何分辨是否存在校验</h3><p>存在校验如何分辨属于哪种校验</p>
+<h4 id="SSL-pinning-1"><a href="#SSL-pinning-1" class="headerlink" title="SSL pinning"></a>SSL pinning</h4><p>如果抓不到包是不是就存在SLL pinning？ 因为如果客户端检测不通过那么也就不会发包了鸭，这样自然会显示失败的界面。<br>所以我们环境正常的情况下抓不到包，并且应用显示连不上网络，那么很多可能就是SLL pinning，这样我们需要先过掉这个检测再去抓包。</p>
+<h4 id="双向证书校验"><a href="#双向证书校验" class="headerlink" title="双向证书校验"></a>双向证书校验</h4><p>双向证书验证时我们是能够抓到数据包的，只是服务器返回的状态码为400，原因是因为抓包工具没有发送有效的CA证书给服务器。</p>
+<h4 id="Bypass-SSL-pinning"><a href="#Bypass-SSL-pinning" class="headerlink" title="Bypass SSL pinning"></a>Bypass SSL pinning</h4><p>1.利用Xposed+JustTrustMe绕过单向验证<br>2.通过Frida绕过SSL单向验证<br>这两种方法的原理都是对客户端的验证函数进行hook，从而达到绕过验证的目的。</p>
+<h4 id="Bypass-双向验证"><a href="#Bypass-双向验证" class="headerlink" title="Bypass 双向验证"></a>Bypass 双向验证</h4><p>因为客户端会验证服务端的证书，所以一般会把证书和证书秘钥存放在app中，我们找到服务器的CA证书并且导入到抓包工具中再进行抓包就行了</p>
+<h3 id="实例soul"><a href="#实例soul" class="headerlink" title="实例soul"></a>实例soul</h3><p>下面我们利用soul来实际操作下，我们这里使用的抓包工具是Charles-proxy，别的工具思路是一样的，只是最后导入证书的方法不一样而已。<br>在没有绕过SSL pinning的情况下，我们会发现利用抓包工具无法对该应用的数据包进行抓取。猜测该应用可能使用了SSL pinning验证。</p>
+<h4 id="bypass-SSL-pinning"><a href="#bypass-SSL-pinning" class="headerlink" title="bypass SSL pinning"></a>bypass SSL pinning</h4><p>不管三七二十一，我们直接利用Xposed+JustTrustMe试一下绕过单向验证，验证下我们的猜测。<br><img src="Image.png" alt="64cfacd4e5d15297fd5e56680ec04fb5"><br>可以看到，由于我们开启JustTrustMe后就可以抓取到该应用的数据了，所以应该是绕过了SSL pinning，抓包结果如上图所示。<br>接着我们从服务器返回的信息以及返回的状态码为400可以确定，该服务端应该是开启了双向验证机制的。所以我们还需要去绕过服务端的双向验证机制。</p>
+<h4 id="双向代理绕过"><a href="#双向代理绕过" class="headerlink" title="双向代理绕过"></a>双向代理绕过</h4><h5 id="在应用端查找服务器的CA证书"><a href="#在应用端查找服务器的CA证书" class="headerlink" title="在应用端查找服务器的CA证书"></a>在应用端查找服务器的CA证书</h5><p>既然客户端会对服务端的证书进行验证，那么服务端的证书肯定在客户端会保留一份，那么我们能否直接在apk中找到呢。<br>在soul apk的assets目录下可以发现确实存在我们需要的证书。<br><img src="Image2.png" alt="5e3623fc17686db4a7c2e8818dfa5f9c"><br>现在我们有了服务端的证书，但这还不够，因为使用该证书的时候会提示我们输入密码，我们还需要找到证书的密码，思路和刚才一样，在应用中找。</p>
+<h5 id="在应用端查找CA证书密码"><a href="#在应用端查找CA证书密码" class="headerlink" title="在应用端查找CA证书密码"></a>在应用端查找CA证书密码</h5><p>把应用apk丢到jadx中解析，然后利用该工具的搜索功能直接搜索关键字”client.p12”，可以看到确实搜索到了。<br><img src="Image3.png" alt="aa243215f322b6e6e04ed60b809752e4"><br>然后通过向上回溯分析代码，可以知道这段代码会调用到一个getStorePassword函数，该函数是一个jni函数，通过名字我们大概可以猜想到什么。<br><img src="Image4.png" alt="cad03ac42c37f13574cd508ae2bd477c"><br><img src="Image5.png" alt="2b2651d45867f7c400e44915df1f86cd"><br><img src="Image6.png" alt="45e98d25ff5fc9a6d708bd597fdc586b"><br>接着通过分析该函数所在的类可以知道该类会加载一个soul-netsdk动态库，那么我们就知道了getStorePassword的实现应该就在这个动态库中。<br><img src="Image7.png" alt="密码函数"><br>从apk中找到这个动态库并丢到IDA中解析可以找到下面这个函数，可以看到该函数直接返回了一个字符串，到此为止我们得到这个字符串就是该证书的密码”soulapp123!@#1”。<br><img src="Image8.png" alt="查找密码"></p>
+<h5 id="导入证书到抓包工具"><a href="#导入证书到抓包工具" class="headerlink" title="导入证书到抓包工具"></a>导入证书到抓包工具</h5><p>最后我们需要把我们前面获取到的证书导入到抓包工具中，让工具使用我们提供的证书。通过以下的选项打开我们的导入窗口。<br>Proxy -&gt; SSL Proxying Settings<br><img src="Image9.png" alt="导入证书"><br>然后会弹出一个选项框，选中我们的证书，导入之后就是下面这样。<br><img src="Image10.png" alt="导入成功"><br>一切顺利之后点击OK，然后再次进行抓包。</p>
+<h5 id="进行抓包看下结果"><a href="#进行抓包看下结果" class="headerlink" title="进行抓包看下结果"></a>进行抓包看下结果</h5><p>可以看到我们成功抓到了数据包，并且也可以看到里面的内容。<br><img src="Image11.png" alt="再次抓包"></p>
+<h3 id="实例"><a href="#实例" class="headerlink" title="实例"></a>实例</h3><p><a href="https://blog.csdn.net/hldh214/article/details/84310876" target="_blank" rel="external">用 JustTrustMe 干翻 SSL Pinning: 爬尤美 app 付费视频</a><br><a href="https://www.secpulse.com/archives/117194.html" target="_blank" rel="external">记一次APP双向认证抓包</a><br><a href="https://api-caller.com/2019/03/30/frida-note/" target="_blank" rel="external">Frida 学习笔记-后面有几个例子不错</a></p>
+<h3 id="github相关工具"><a href="#github相关工具" class="headerlink" title="github相关工具"></a>github相关工具</h3><p><a href="https://github.com/WooyunDota/DroidDrops/blob/master/2018/Frida.Android.Practice.md">DroidDrops</a><br><a href="https://github.com/WooyunDota/DroidSSLUnpinning">DroidSSLUnpinning</a></p>
+<h3 id="相关链接"><a href="#相关链接" class="headerlink" title="相关链接"></a>相关链接</h3><p><a href="https://juejin.im/post/5c9cbf1df265da60f6731f0a" target="_blank" rel="external">扯一扯HTTPS单向认证，双向认证，抓包原理，反抓包策略</a><br><a href="https://juejin.im/post/5c66cc1e6fb9a049c84ffd12" target="_blank" rel="external">深入了解解析Https - 从了解到放弃</a><br><a href="https://www.secpulse.com/archives/112022.html" target="_blank" rel="external">APP抓包——Xposed+JustTrustMe关闭SSL证书验证</a><br><a href="https://xz.aliyun.com/t/6551#toc-14" target="_blank" rel="external">Android抓包总结</a><br><a href="https://fuping.site/2019/01/25/Frida-Hook-SoulAPP/" target="_blank" rel="external">安卓APP测试之HOOK大法-Frida篇</a><br><a href="https://fuping.site/2019/02/13/SoulAPP-SSL-Bypass/" target="_blank" rel="external">安卓APP测试之双向证书认证</a><br><a href="https://www.cnblogs.com/webconfig/p/10768762.html" target="_blank" rel="external">使用OpenSSL（Windows x64版）将pem格式证书转换为p12格式</a><br><a href="https://github.com/MegatronKing/HttpCanary/issues/9">添加证书导入功能</a><br>以下三篇文章大同小异<br><a href="https://www.anquanke.com/post/id/86507" target="_blank" rel="external">使用Frida绕过Android SSL Re-Pinning</a><br><a href="https://bbs.pediy.com/thread-222427.htm" target="_blank" rel="external">利用Frida绕过Certificate Pinning</a><br><a href="https://www.freebuf.com/articles/terminal/214540.html" target="_blank" rel="external">使用Frida绕过Android App的SSL Pinning</a></p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h1 id=&quot;Android-APP抓包总结&quot;&gt;&lt;a href=&quot;#Android-APP抓包总结&quot; class=&quot;headerlink&quot; title=&quot;Android APP抓包总结&quot;&gt;&lt;/a&gt;Android APP抓包总结&lt;/h1&gt;&lt;hr&gt;
+&lt;h3 id=&quot;常用的抓包工具&quot;
+    
+    </summary>
+    
+      <category term="Android逆向" scheme="http://github.com/categories/Android%E9%80%86%E5%90%91/"/>
+    
+    
+      <category term="Android逆向" scheme="http://github.com/tags/Android%E9%80%86%E5%90%91/"/>
+    
+  </entry>
+  
+  <entry>
     <title>StrandHogg漏洞-Activity劫持</title>
     <link href="http://github.com/2019/12/05/StrandHogg%E6%BC%8F%E6%B4%9E-Activity%E5%8A%AB%E6%8C%81/"/>
     <id>http://github.com/2019/12/05/StrandHogg漏洞-Activity劫持/</id>
     <published>2019-12-05T07:38:52.000Z</published>
-    <updated>2019-12-19T10:25:40.489Z</updated>
+    <updated>2020-08-06T10:14:25.821Z</updated>
     
     <content type="html"><![CDATA[<h1 id="StrandHogg漏洞-Activity劫持"><a href="#StrandHogg漏洞-Activity劫持" class="headerlink" title="StrandHogg漏洞-Activity劫持"></a>StrandHogg漏洞-Activity劫持</h1><hr>
-<h3 id="背景简述"><a href="#背景简述" class="headerlink" title="背景简述"></a>背景简述</h3><p>该问题最早在15年的USENIX安全研讨会就被提出了，研究人员从理论上描述了该漏洞的实现方法，但Google否认了其严重性。<br>之后攻击方法被武汉大学发表了论文《一种新的基于APP启动模式的劫持攻击方案》。<br>前段时间被挪威一家APP安全公司报道该特性漏洞并证明该问题已被多个恶意应用利用，才引起了大家的注意，并被命名为StrandHogg漏洞。<br>该漏洞并不能直接绕过用户获取权限，而需要伪装成正常应用通过欺骗用户来获取权限，包括android10在内的所有android版本都受该漏洞的影响。</p>
-<h3 id="前置知识点"><a href="#前置知识点" class="headerlink" title="前置知识点"></a>前置知识点</h3><h4 id="Activity劫持"><a href="#Activity劫持" class="headerlink" title="Activity劫持"></a>Activity劫持</h4><p>该漏洞的利用本质其实就是Activity劫持，简单来说就是当用户打开正常应用的Activit时，恶意的应用利用它自己实现的Activity覆盖掉正常应用的Activity，实现对用户的欺骗，从而达到我们想要的目的。常用于劫持正常登录页面欺骗用户达到获取用户账号密码的效果。<br>在讲解该漏洞原理之前我们先来简单看下该漏洞涉及到的一些知识点。</p>
-<h4 id="Activity状态转换"><a href="#Activity状态转换" class="headerlink" title="Activity状态转换"></a>Activity状态转换</h4><p>首先是Activity，Activity是Android组件中最基本也是最常见的四大组件之一。在一个Android应用中，一个Activity通常就是一个单独的屏幕，上面可以显示一些控件也可以监听并处理用户的事件做出相应。<br>一个Activity共有4种状态，分别是运行，暂停，停止与销毁。</p>
+<h3 id="背景简述"><a href="#背景简述" class="headerlink" title="背景简述"></a>背景简述</h3><p>StrandHogg漏洞是去年12月份挪威一家APP安全公司披露了一个Android特性中存在的问题，并证明该问题已被多个恶意程序利用来进行提权，该公司还特意为该漏洞命名为StrandHogg漏洞，意为维京海盗式Android应用漏洞。<br>其实该漏洞并不能直接绕过用户获取权限，而是利用Activity劫持伪装成正常应用通过欺骗用户来获取权限，包括android10在内的所有android版本都受该漏洞的影响。<br>深入研究发现该问题最早在15年的USENIX安全研讨会就被提出了，研究人员从理论上描述了该漏洞的实现方法，但Google否认了其严重性。之后攻击方法被武汉大学学生发表了论文《一种新的基于APP启动模式的劫持攻击方案》。<br>今年5月份该公司又搞出个StrandHogg漏洞2.0，本次分享主要还是StrandHogg漏洞的原理。后面有机会再分享升级版的2.0。</p>
+<h3 id="前置知识点"><a href="#前置知识点" class="headerlink" title="前置知识点"></a>前置知识点</h3><h4 id="Activity劫持"><a href="#Activity劫持" class="headerlink" title="Activity劫持"></a>Activity劫持</h4><p>该漏洞的利用本质其实就是Activity劫持，简单来说就是当用户打开正常应用的Activity时，恶意的应用利用它自己实现的Activity覆盖掉正常应用的Activity，实现对用户的欺骗，从而达到我们想要的目的。常用于劫持正常登录页面欺骗用户达到获取用户账号密码的效果。<br>在讲解该漏洞原理之前我们先来简单看下该漏洞涉及到的一些知识点。</p>
+<h4 id="Activity状态转换"><a href="#Activity状态转换" class="headerlink" title="Activity状态转换"></a>Activity状态转换</h4><p>首先是Activity，Activity是Android组件中最基本也是最常见的四大组件之一。在一个Android应用中，一个Activity通常就是一个单独的屏幕，上面可以显示一些控件也可以监听并处理用户触发的事件。<br>一个Activity共有4种状态，分别是运行，暂停，停止与销毁。</p>
 <ul>
 <li>运行状态就是当Activity处于屏幕前台时，我们能与之交互的状态，此时的Activity处于活动栈的最顶端。</li>
 <li>暂停状态则是当Activity失去焦点时，但部分界面用户仍然可见时的状态。</li>
-<li>停止状态是当前Activity完全被另一个Activity覆盖掉的状态，此时它仍然保持所有状态，只是该Activity不可见。</li>
-<li>当一个Activity被关闭时进入销毁状态，一般由用户操作或内存不足时系统强制销毁所致。</li>
+<li>停止状态是当前Activity完全被另一个Activity覆盖掉的状态，此时的Activity我们是不可见的。</li>
+<li>当一个Activity被关闭时进入销毁状态，一般是由用户操作或内存不足时系统强制销毁所致。</li>
 </ul>
 <p>通过下面的这张图我们看下几种状态之间的互相转换以及每种状态转换时会触发的函数。<br>一个Activity的状态转换流程如下：<br><img src="Image.png" alt="转换流程"><br>Activity相关的七个生命周期函数，分别为onCreate()，onRestart()，onStart()，onReusme()，onPause()，onStop()，onDestory()。</p>
-<h4 id="Task任务，Activity栈"><a href="#Task任务，Activity栈" class="headerlink" title="Task任务，Activity栈"></a>Task任务，Activity栈</h4><p>然后是任务(Task)的概念，任务就是一些相关联的Activity的集合，当我们打开手机的任务管理器时，界面上显示的就是一个个任务。一个任务中的Activity可以来自不同的应用程序。比如程序A的Activity打开程序B的一个Activity，这两个Activity都会保存在一个任务中，这样实现是为了更好的用户体验。<br>每个任务中的Activity集合都是以栈的方式(后进先出)进行管理。所有Activity都保存在栈中，以便用户点击”后退”按钮时导航到之前的Activity恢复执行。<br>屏幕上始终显示返回栈顶部的Activity，我们称它为前台Activity，与之关联的任务是前台任务，因此一次只能有一个前台任务，其他的任务都属于后台任务。当任务被切换到后台时，任务中的所有Activity都会停止，并在任务的返回栈中保持不变，这样当用户再次打开该任务时就可以从上次停止的地方接着运行。<br>这里需要注意的地方就是虽然在android中存在沙箱机制每个应用都受到android沙箱的保护，但来自不同应用程序的Activity可以共存于同一任务中，这给我们劫持Activity提供了机会。<br>android沙箱：该机制主要基于linux的用户权限保护和进程隔离实现的，每个应用对应一个用户，不同应用间相互隔离，只能访问属于自己的资源，不能访问其他应用的数据。</p>
-<h4 id="taskAffinity-任务相关性"><a href="#taskAffinity-任务相关性" class="headerlink" title="taskAffinity(任务相关性)"></a>taskAffinity(任务相关性)</h4><p>(也就是通过该参数来控制恶意Activity去劫持哪个页面)<br>与任务相关的属性叫做taskAffinity(任务相关性)，在manifest中可以指定这个属性的值，该属性用来标识一个Activity所需要的任务名称。如果在manifest文件中注册Activity时不明确指定taskAffinity属性那么默认该Activity所需任务的名字就是所属应用的包名。所以默认情况下一个app中所有Activity都在同一个task中。当Activity设置了taskAffinity属性，那么这个Activity在被创建时就会运行在和taskAffinity相同的任务中，如果没找到该任务，就新建taskAffinity指定的任务，并将该Activity添加到其中。一般该属性都是和singleTask模式或allowTaskReparenting属性配合使用，其他情况下没什么意义。</p>
+<h4 id="Task任务，Activity栈"><a href="#Task任务，Activity栈" class="headerlink" title="Task任务，Activity栈"></a>Task任务，Activity栈</h4><p>然后是任务(Task)的概念，任务就是一些相关联的Activity的集合，当我们打开手机的任务管理器时，界面上显示的就是一个个任务。一个任务中的Activity可以来自不同的应用程序。比如程序A的Activity打开程序B的一个Activity，这两个Activity都会保存在一个任务中，这样实现是为了更好的用户体验。<br>每个任务中的Activity都是以栈的方式(后进先出)进行管理。我们称这个栈叫活动栈，所有Activity都保存在栈中，以便用户点击”后退”按钮时导航到之前的Activity恢复执行。<br>屏幕上始终显示栈顶部的Activity，我们称它为前台Activity，与之关联的任务是前台任务，因此一次只能有一个前台任务，其他的任务都属于后台任务。当任务被切换到后台时，任务中的所有Activity都会停止，并在任务的活动栈中保持不变，这样当用户再次打开该任务时就可以从上次停止的位置接着运行。<br>这里需要注意的地方就是虽然在android中存在沙箱机制每个应用都受到android沙箱的保护，但来自不同应用程序的Activity可以共存于同一任务中，这给我们劫持Activity提供了机会。<br>android沙箱：该机制主要基于linux的用户权限保护和进程隔离实现的，每个应用对应一个用户，不同应用间相互隔离，只能访问属于自己的资源，不能访问其他应用的数据。</p>
+<h4 id="taskAffinity-任务相关性"><a href="#taskAffinity-任务相关性" class="headerlink" title="taskAffinity(任务相关性)"></a>taskAffinity(任务相关性)</h4><p>(也就是通过该参数来控制恶意Activity去劫持哪个页面)<br>与任务相关的一个属性叫做taskAffinity(任务相关性)，在manifest中可以指定这个属性的值，该属性用来标识一个Activity所需要的任务名称。如果在manifest文件中注册Activity时不明确指定taskAffinity属性那么默认该Activity所需任务的名字就是所属应用的包名。所以默认情况下一个app中所有Activity都在同一个task中。当Activity设置了taskAffinity属性，那么这个Activity在被创建时就会运行在和taskAffinity相同的任务中，如果没找到该任务，就新建taskAffinity指定的任务，并将该Activity添加到其中。一般该属性都是和singleTask模式或allowTaskReparenting属性配合使用，其他情况下没什么意义。</p>
 <h4 id="4种启动模式"><a href="#4种启动模式" class="headerlink" title="4种启动模式"></a>4种启动模式</h4><p>最后来看下Activity启动的4种模式，不同模式实现的效果会不一样。<br>standard模式(默认启动模式)：这种模式下Activity可以有多个实例，无论任务栈中是否已经存在该Activity的实例都会创建一个新的Activity实例。<br>singleTop模式(栈顶复用模式)：该模式与Standard模式有些类似，区别在于如果需要启动的Activity在栈顶，不会创建新的实例只是调用该Activity的onNewIntent方法。如果不在栈顶则会创建新的实例。<br>singleTask模式(栈内复用模式)：这种模式同一个Task内只有一个实例，如果Activity已经位于栈顶，那么系统就不会再创建新的Activity实例，和singleTop一样。但如果Activity存在但不位于栈顶则会将该Activity移到栈顶，并将它上面的Activity出栈。<br>singleInstance模式(单例模式)：这种模式也是单例模式，但和SingleTask模式不一样，singleInstance的Activity不予许自己的task中存在其他的Activity实例，也就是该模式的Activity应用是task中唯一的Activity实例。</p>
-<h3 id="攻击思路和模型"><a href="#攻击思路和模型" class="headerlink" title="攻击思路和模型"></a>攻击思路和模型</h3><h4 id="攻击思路"><a href="#攻击思路" class="headerlink" title="攻击思路"></a>攻击思路</h4><p>有了上面的基础知识现在我们来看看如何实现我们想要的Activity劫持。<br>这里有两种情况可以达到我们的效果，首先我们假设有两个应用，恶意应用A，受害者应用B，对应的是劫持Activity-A，任务名为Task-A，被劫持Activity-B，任务名为Task-B。</p>
-<p>第一种情况<br>当受害者应用B中被劫持Activity-B的android:launchMode=”standard”或”singleTop”时，我们可以把恶意应用A中用来做劫持的Activity-A的taskAffinity属性值设置为与被劫持Activity-B的taskAffinity值一致(Task-B)，并且把Activity-A的allowTaskReparenting属性设置为true，这样当受害者应用B启动时，用来劫持的Activity-A就会从启动它的Task-A转换为受害者应用的Task-B的栈顶进行显示。从而完成我们Activity劫持的效果。<br>不过allowTaskReparenting有个问题，就是只有当Affinity定义的需要转移的Task-B创建时，才会触发重新设置Task的操作，所以这种攻击恶意应用A必须在受害者应用B启动之前就启动，否则劫持就会失败。<br>解决的方法就是启动Activity-A的时候通过设置FLAG_ACTIVITY_NEW_TASK属性来实现劫持，该属性的效果是如果Affinity设置的Task已经存在，则直接将Activity添加到该Task中，如果不存在则创建一个新的Task，并将Activity添加进去。这样就避免第一种情况恶意应用A后启动导致没法加入到Task-B的问题。</p>
-<p>第二种情况<br>当受害者应用B中被劫持Activity-B的android:launchMode=”singleInstance”时，由于该模式属于单例模式，不允许自己的Task中存在其他的Activity实例，每次singleInstance属性的Activity启动时无论后台是否存在同名的Task，系统都会创建一个新的Task并将当前的Activity添加到该任务的Activity栈中，之后不可再给该任务添加别的Activity，该任务一直以单Activity的形式存在。但这有个问题就是如果后台不存在同名任务，那么该流程属于正常流程。一旦存在同名任务，系统仍然会创建一个新的Task并赋予不同的Taskid，这就导致系统中存在两个同Task名但不同id的Task，而系统运行任务列表又只会显示最近运行的任务，这就给人一种两者位于同一任务的错觉。</p>
+<h3 id="攻击思路和模型"><a href="#攻击思路和模型" class="headerlink" title="攻击思路和模型"></a>攻击思路和模型</h3><h4 id="攻击思路"><a href="#攻击思路" class="headerlink" title="攻击思路"></a>攻击思路</h4><p>有了上面的基础知识现在我们来看看如何实现我们想要的Activity劫持。<br>这里有两种情况可以达到我们的效果，首先我们假设有两个应用，分别是恶意应用A，受害者应用B，对应的是劫持页面Malware-Activity-A，任务名为Task-A，被劫持页面Target-Activity-A，任务名为Task-B。</p>
+<p>第一种情况<br>当受害者应用B中被劫持页面Target-Activity-A的android:launchMode=”standard”或”singleTop”时，我们可以把恶意应用A中用来做劫持页面Malware-Activity-A的taskAffinity属性值设置为与被劫持页面Target-Activity-A的taskAffinity值一致(Task-B)，并且把劫持页面Malware-Activity-A的allowTaskReparenting属性设置为true，这样当受害者应用B启动时，用来劫持的Malware-Activity-A就会从启动它的Task-A转换为受害者应用的Task-B的栈顶进行显示。从而完成我们Activity劫持的效果。<br>不过allowTaskReparenting有个问题，就是只有当Affinity定义的需要转移的Task-B创建时，才会触发重新设置Task的操作，所以这种攻击恶意应用A必须在受害者应用B启动之前就启动，否则劫持就会失败。<br>解决的方法就是启动Malware-Activity-A的时候通过设置FLAG_ACTIVITY_NEW_TASK属性来实现劫持，该属性的效果是如果Affinity设置的Task已经存在，则直接将Activity添加到该Task中，如果不存在则创建一个新的Task，并将Activity添加进去。这样就避免第一种情况恶意应用A后启动导致没法加入到Task-B的问题。</p>
+<p>第二种情况<br>当受害者应用B中被劫持Target-Activity-A的android:launchMode=”singleInstance”时，由于该模式属于单例模式，不允许自己的Task中存在其他的Activity实例，每次singleInstance属性的Activity启动时无论后台是否存在同名的Task，系统都会创建一个新的Task并将当前的Activity添加到该任务的Activity栈中，之后不可再给该任务添加别的Activity，该任务一直以单Activity的形式存在。但这有个问题就是如果后台不存在同名任务，那么该流程属于正常流程。一旦存在同名任务，系统仍然会创建一个新的Task并赋予不同的Taskid，这就导致系统中存在两个同Task名但不同id的Task，而系统运行任务列表又只会显示最近运行的任务，这就给人一种两者位于同一任务的错觉。</p>
 <h4 id="攻击模型"><a href="#攻击模型" class="headerlink" title="攻击模型"></a>攻击模型</h4><p>现在我们来看下利用上面讲到的知识如何去实现一个Activity劫持。<br>android:launchMode=”standard” + android:allowTaskReparenting=”true”<br>劫持（伪造task，当目标应用启动时，会显示恶意Activity），点击返回后进入目标正常Activity<br>如果目标应用先启动的话则劫持失败<br><img src="Standard_allowTaskReparenting.png" alt="Standard_allowTaskReparenting"><br>[视频演示-1.mp4]</p>
-<p>android:launchMode=”standard” + Intent.FLAG_ACTIVITY_NEW_TASK(android:launchMode=”singleTask”)<br>劫持（伪造task，当目标应用启动时，会显示恶意Activity），点击返回后直接退出到桌面<br>如果目标应用先启动的话仍然可以劫持，点击返回后进入目标正常Activity<br><img src="Standard_New_Task_1.png" alt="Standard_New_Task_1"><br>[视频演示-2-1.mp4]<br><img src="Standard_New_Task_2.png" alt="Standard_New_Task_2"><br>[视频演示-2-2.mp4]</p>
-<p>android:launchMode=”singleInstance”<br>劫持（创建一个与目标应用Task名一致但id不一样的新Task，由于系统运行任务列表只显示最近运行的任务，所以给人的感觉就像是被劫持一样）<br><img src="singleInstance.png" alt="singleInstance"><br>[视频演示-3.mp4]</p>
+<video controls="controls" src="./1.mp4" width="100%"></video>
+
+<p>android:launchMode=”standard” + Intent.FLAG_ACTIVITY_NEW_TASK(android:launchMode=”singleTask”)<br>劫持（伪造task，当目标应用启动时，会显示恶意Activity），点击返回后直接退出到桌面<br>如果目标应用先启动的话仍然可以劫持，点击返回后进入目标正常Activity<br><img src="Standard_New_Task_1.png" alt="Standard_New_Task_1"><br>[视频演示-2-1.mp4]</p>
+<video controls="controls" src="./2-1.mp4" width="100%"></video><br><img src="Standard_New_Task_2.png" alt="Standard_New_Task_2"><br>[视频演示-2-2.mp4]<br><video controls="controls" src="./2-2.mp4" width="100%"></video>
+
+<p>android:launchMode=”singleInstance”<br>劫持（创建一个与目标应用Task名一致但id不一样的新Task，由于系统运行任务列表只显示最近运行的任务，所以在任务列表中就看不到正常应用的Task，给人的感觉就像是被劫持一样）<br><img src="singleInstance.png" alt="singleInstance"><br>[视频演示-3.mp4]</p>
+<video controls="controls" src="./3.mp4" width="100%"></video>
+
 <h3 id="应用场景"><a href="#应用场景" class="headerlink" title="应用场景"></a>应用场景</h3><h4 id="Activity劫持-网络钓鱼"><a href="#Activity劫持-网络钓鱼" class="headerlink" title="Activity劫持-网络钓鱼"></a>Activity劫持-网络钓鱼</h4><p>通过伪造一个与目标Activity一样的恶意Activity比如用户登录界面，充值页面等，当用户点开目标界面时通过上述提到的方法去劫持调目标Activity从而欺骗用户达到钓鱼效果。</p>
 <h4 id="防卸载，勒索等"><a href="#防卸载，勒索等" class="headerlink" title="防卸载，勒索等"></a>防卸载，勒索等</h4><p>大概的意思就是通过Activity的excludeFromRecents属性把恶意应用的Activity隐藏起来，然后通过监控任务来一直启动恶意Activity避免Activity被关闭，这样每次点击正常目标应用显示的都会是恶意Activity，从而达到防卸载，拒绝打开目标应用的效果，感觉其实和上面的原理还是一样的。</p>
-<h3 id="防护措施"><a href="#防护措施" class="headerlink" title="防护措施"></a>防护措施</h3><p>由于该问题属于android设计上的一个缺陷所以目前对于这类劫持还没有比较好的防御方案，不过可以适当给用户一些警告，比如提示用户登录界面被覆盖，应用被切换到后台之类的提示。避免用户把恶意的<br>通过对应用顶层Activity监控，使用白名单机制避免别的应用覆盖本应用的页面。</p>
-<h3 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h3><p><a href="https://segmentfault.com/a/1190000018978183" target="_blank" rel="external">9.0源码分析</a><br><a href="https://pomelojiang.github.io/android_framework_start_activity_1" target="_blank" rel="external">源码分析</a><br><a href="https://juejin.im/post/5ce900cdf265da1b827a783a" target="_blank" rel="external">源码分析-比较详细</a><br><a href="https://www.jianshu.com/p/2c73be80ce8d" target="_blank" rel="external">Android启动模式和taskAffinity属性详解</a><br><a href="https://mp.weixin.qq.com/s/NaokUlH3EDaOHjCkb_U0Bg" target="_blank" rel="external">安卓特性漏洞重浮水面，已被多个恶意应用利用</a></p>
+<h3 id="防护措施"><a href="#防护措施" class="headerlink" title="防护措施"></a>防护措施</h3><p>由于该问题属于android设计上的一个缺陷所以目前对于这类劫持还没有比较好的防御方案，不过可以适当给用户一些警告，比如提示用户登录界面被覆盖，应用被切换到后台之类的提示。避免用户把恶意的Activity当做正常的页面使用。<br>通过对应用顶层Activity监控，使用白名单机制避免别的应用覆盖本应用的页面。</p>
+<h3 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h3><p><a href="https://segmentfault.com/a/1190000018978183" target="_blank" rel="external">9.0源码分析</a><br><a href="https://pomelojiang.github.io/android_framework_start_activity_1" target="_blank" rel="external">源码分析</a><br><a href="https://juejin.im/post/5ce900cdf265da1b827a783a" target="_blank" rel="external">源码分析-比较详细</a><br><a href="http://www.xml-data.org/whdy/html/e76dfa25-fae9-401e-a91c-0ba134d00a47.htm" target="_blank" rel="external">一种新的基于APP启动模式的劫持攻击方案</a><br><a href="https://www.jianshu.com/p/2c73be80ce8d" target="_blank" rel="external">Android启动模式和taskAffinity属性详解</a><br><a href="https://mp.weixin.qq.com/s/NaokUlH3EDaOHjCkb_U0Bg" target="_blank" rel="external">安卓特性漏洞重浮水面，已被多个恶意应用利用</a></p>
 ]]></content>
     
     <summary type="html">
